@@ -19,8 +19,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private State gameState = State.PLAY;
     private boolean gameOver = false;
     private BufferedImage backgroundImg;
-    private BufferedImage playerImg, starImg, bulletImg, lazerImg, enemyImg1, enemyImg2;
-    private Entity player, bullet, lazer;
+    private BufferedImage playerImg, starImg, bulletImg, enemyImg1, enemyImg2;
+    private Entity player, bullet;
     private int playerScore = 0, playerHealth = 100;
     private ArrayList<Entity> star = new ArrayList<>();
     private int starNumber = 3;
@@ -29,7 +29,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private long timeCounter = 0;
     private Thread thread;
     private int move = 0; // move = -1 là di chuyển sang trái, move = 1 là di chuyển sang phải, move = 0 là đứng yên
-    private int shoot = 0, beam = 0; // shoot = 0 là bắn, shoot = 1 
+    private int shoot = 0; // shoot = 0 là bắn, shoot = 1 
     private Random random = new Random();
     private Sound bgMusic;
     
@@ -49,7 +49,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             playerImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/alpha.png"));
             starImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/star.png"));
             bulletImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/firebullet.png"));
-            lazerImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/lazer.png"));
             // Hàm getSubimage() dùng để cắt một phần ảnh từ ảnh gốc. Tham số: hoành độ bắt đầu cắt, tung độ bắt đầu cắt, độ dài muốn cắt chiều ngang, độ dài muốn cắt chiều dọc
             enemyImg1 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/assaultspaceship.png"));
             enemyImg2 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/ufo.png"));
@@ -60,7 +59,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         // Khởi tạo dữ liệu cho player và bullet
         player = new Entity(WIDTH/2 - 48/2, HEIGHT - 90, 5, 5, 48, 48); // Ta để width và height bằng 48 dù trong ảnh gốc, mỗi vật thể chỉ là 16, 16 vì 16 thì nhỏ quá :)
         bullet = new Entity(WIDTH, HEIGHT + 1000, 0, 5, 48, 48); // Ban đầu, khi chưa nhấn Space để bắn, bullet nằm tại điểm đạn (chứ mà ko thiết lập thì mặc định là (0, 0) thì có thể bị gần toạ độ enemy mới tạo -> playerScore tăng dù ko bắn
-        lazer = new Entity(WIDTH, HEIGHT + 1000, 0, 5, 48, 350);
         for(int i=0; i<starNumber; i++){
             Entity newStar = new Entity(3, 10, 10);
             newStar.setX(random.nextInt(WIDTH - 48) + 0);
@@ -88,9 +86,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         g.drawImage(playerImg, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
         if(shoot == 1){ // Nếu shoot = 1 thì mới vẽ hình ảnh viên đạn
             g.drawImage(bulletImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
-        }
-        if(beam == 1){
-            g.drawImage(lazerImg, lazer.getX(), lazer.getY(), lazer.getWidth(), lazer.getHeight(), null);
         }
         if(bullet.getY() < -48){ // Nếu hình ảnh viên đạn vượt ra khỏi phần nhìn thấy của frame
             shoot = 0; // Không hiện hình ảnh viên đạn đó nữa (nhìn if bên trên). Cho phép bắn viên đạn mới nếu đã nhấn phím Space
@@ -136,13 +131,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         if(shoot == 1){
             bullet.setY(bullet.getY() - bullet.getVy());
         }
-        if(beam == 1){
-            lazer.setX(player.getX());
-        }
-        else{
-            lazer.setX(WIDTH);
-            lazer.setY(HEIGHT + 1000);
-        }
         if(playerHealth < 0){
             playerHealth = 0;
             gameOver = true;
@@ -176,7 +164,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             enemy.get(i).setY(enemy.get(i).getY() + enemy.get(i).getVy());
             double distance1 = Math.sqrt(Math.pow(enemy.get(i).getX() - bullet.getX(), 2) + Math.pow(enemy.get(i).getY() - bullet.getY(), 2));
             double distance2 = Math.sqrt(Math.pow(enemy.get(i).getX() - player.getX(), 2) + Math.pow(enemy.get(i).getY() - player.getY(), 2));
-            double distance3 = Math.sqrt(Math.pow(enemy.get(i).getX() - lazer.getX(), 2) + Math.pow(enemy.get(i).getY() - lazer.getY(), 2));
             if(distance1 < 48){ // Nếu đạn bắn trúng enemy -> enemy chết. Đáng lẽ phải xoá enemy khỏi ArrayList, nhưng làm vậy rất phức tạp. Nên ta làm như sau:
                 enemy.get(i).setHealth(enemy.get(i).getHealth() - 20);
                 if(enemy.get(i).getHealth() <= 0){ 
@@ -203,17 +190,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     enemy.get(i).setY(HEIGHT + 2000);
                     enemy.get(i).setVy(0);
                 }
-            }
-            if(distance3 < 48){
-                enemy.get(i).setHealth(enemy.get(i).getHealth() - 20);
-                if(enemy.get(i).getHealth() <= 0){ 
-                    enemy.get(i).setX(WIDTH);   
-                    enemy.get(i).setY(HEIGHT + 2000);    
-                    enemy.get(i).setVy(0);  
-                    playerScore += enemy.get(i).getPoint();
-                }
-                // dẫn tới việc enemy đi đến vị trí đó sẽ chết do kích hoạt điều kiện if này dù màn hình ko hiển thị hình ảnh bullet do biến shoot = 0
-                // Tương tự enemy, ta cũng thiết lập để sau khi trúng địch, bullet sẽ nằm tại 1 điểm (WIDTH, HEIGHT + 200) gọi là điểm đạn
             }
             if(enemy.get(i).getY() > HEIGHT + 48 && enemy.get(i).getY() < HEIGHT + 100){ // Thêm điều kiện sau vì khi enemy trúng đạn -> bị xuống điểm chết -> playerHealth bị trừ, sau đó enemy tái sinh
                 playerHealth -= 5;
@@ -282,11 +258,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     bgMusic.stop();
                 }
                 break;
-            case KeyEvent.VK_L:
-                lazer.setX(player.getX());
-                lazer.setY(player.getY() - 350);
-                beam = 1;
-                break;
         }
     }
 
@@ -298,9 +269,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 break;
             case KeyEvent.VK_RIGHT:
                 move = 0;
-                break;
-            case KeyEvent.VK_L:
-                beam = 0;
                 break;
         }
     }
