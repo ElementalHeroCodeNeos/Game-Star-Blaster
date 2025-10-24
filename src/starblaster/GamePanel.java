@@ -17,19 +17,22 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private int WIDTH = 800;
     private int HEIGHT = 600;
     private State gameState = State.PLAY;
+    private State bulletState = State.POWER;
     private boolean gameOver = false;
     private BufferedImage backgroundImg;
-    private BufferedImage playerImg, starImg, bulletImg, enemyImg1, enemyImg2;
-    private Entity player, bullet;
-    private int playerScore = 0, playerHealth = 100;
+    private BufferedImage playerImg, starImg, bulletImg, blueBulletImg, randomImg, heartImg, thunderImg, enemyImg1, enemyImg2;
+    private Player player;
+    private Item[] item = new Item[5];
+    private Bullet[] basicBullet = new Bullet[2];
+    private Bullet[] doubleBullet = new Bullet[4];
+    private Bullet[] powerBullet = new Bullet[3];
     private ArrayList<Entity> star = new ArrayList<>();
     private int starNumber = 3;
     private ArrayList<Enemy> enemy = new ArrayList<>();
     private int enemyNumber = 1;
-    private long timeCounter = 0;
     private Thread thread;
+    private long timeCounter = 0; // Bộ đếm thời gian (tính bằng ticks)
     private int move = 0; // move = -1 là di chuyển sang trái, move = 1 là di chuyển sang phải, move = 0 là đứng yên
-    private int shoot = 0; // shoot = 0 là bắn, shoot = 1 
     private Random random = new Random();
     private Sound bgMusic;
     
@@ -43,22 +46,38 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         try{ 
             /* Hàm getClass() trả về 1 đối tượng kiểu Class (1 đối tượng đại diện cho lớp đang xét - GamePanel, mang thông tin của lớp đó như package, tên lớp,...)
             Hàm getResourceAsStream() là hàm của lớp Class, dùng để lấy dữ liệu của một tệp dưới dạng Stream -> Trả về kiểu InputStream
-            ImageIO là lớp dùng để thao tác đọc ghi với file hình ảnh. Hàm ImageIO.read() để đọc InputStream đó và trả về kiểu BufferedImage
-            */
+            ImageIO là lớp dùng để thao tác đọc ghi với file hình ảnh. Hàm ImageIO.read() để đọc InputStream đó và trả về kiểu BufferedImage */
             backgroundImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/background2.jpg"));
             playerImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/alpha.png"));
             starImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/star.png"));
             bulletImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/firebullet.png"));
+            blueBulletImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/blueFireBullet.png"));
             // Hàm getSubimage() dùng để cắt một phần ảnh từ ảnh gốc. Tham số: hoành độ bắt đầu cắt, tung độ bắt đầu cắt, độ dài muốn cắt chiều ngang, độ dài muốn cắt chiều dọc
             enemyImg1 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/assaultspaceship.png"));
             enemyImg2 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/ufo.png"));
+            randomImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/randomitem.png"));
+            heartImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/heart.png"));
+            thunderImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/thunder.png"));
         }
         catch(Exception e){ // biến e lưu thông tin của lỗi bắt được
             e.printStackTrace(); // In ra dấu vết của lỗi (vị trí lỗi,...)
         }
         // Khởi tạo dữ liệu cho player và bullet
-        player = new Entity(WIDTH/2 - 48/2, HEIGHT - 90, 5, 5, 48, 48); // Ta để width và height bằng 48 dù trong ảnh gốc, mỗi vật thể chỉ là 16, 16 vì 16 thì nhỏ quá :)
-        bullet = new Entity(WIDTH, HEIGHT + 1000, 0, 5, 48, 48); // Ban đầu, khi chưa nhấn Space để bắn, bullet nằm tại điểm đạn (chứ mà ko thiết lập thì mặc định là (0, 0) thì có thể bị gần toạ độ enemy mới tạo -> playerScore tăng dù ko bắn
+        player = new Player(WIDTH/2 - 48/2, HEIGHT - 90, 5, 5, 48, 48, 100, 100, 0); // Ta để width và height bằng 48 dù trong ảnh gốc, mỗi vật thể chỉ là 16, 16 vì 16 thì nhỏ quá :)
+        for(int i=0; i<2; i++){
+            basicBullet[i] = new Bullet(WIDTH, HEIGHT + 200, 0, 5, 48, 48, 20, false);
+        } // Ban đầu, khi chưa nhấn Space để bắn, bullet nằm tại điểm đạn (chứ mà ko thiết lập thì mặc định là (0, 0) thì có thể bị gần toạ độ enemy mới tạo -> playerScore tăng dù ko bắn
+        for(int i=0; i<4; i++){
+            doubleBullet[i] = new Bullet(WIDTH, HEIGHT + 200, 0, 5, 48, 48, 20, false);
+        }
+        for(int i=0; i<3; i++){
+            powerBullet[i] = new Bullet(WIDTH, HEIGHT + 200, 0, 8, 48, 48, 40, false);
+        }
+        item[0] = new Item(2, 48, 48, State.RANDOM, randomImg, 1200, -1, false);
+        item[1] = new Item(2, 48, 48, State.DOUBLE, randomImg, 1200, -1, false);
+        item[2] = new Item(2, 48, 48, State.POWER, randomImg, 1200, -1, false);
+        item[3] = new Item(2, 48, 48, State.RECOVER, heartImg, 1200, -1, false);
+        item[4] = new Item(2, 48, 48, State.SPEEDUP, thunderImg, 1200, -1, false);
         for(int i=0; i<starNumber; i++){
             Entity newStar = new Entity(3, 10, 10);
             newStar.setX(random.nextInt(WIDTH - 48) + 0);
@@ -84,11 +103,33 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         super.paintComponent(g); // Vẽ nền (như kiểu phác thảo, phân bố cục của tranh). Sau đó ta bổ sung lệnh để vẽ chi tiết (kiểu các vật thể, hình ảnh và tô màu)
         g.drawImage(backgroundImg, 0, 0, 800, 600, null);
         g.drawImage(playerImg, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
-        if(shoot == 1){ // Nếu shoot = 1 thì mới vẽ hình ảnh viên đạn
-            g.drawImage(bulletImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
+        switch(bulletState){
+            case State.BASIC:
+                for(int i=0; i<2; i++){
+                    if(basicBullet[i].getActive()){
+                        g.drawImage(bulletImg, basicBullet[i].getX(), basicBullet[i].getY(), basicBullet[i].getWidth(), basicBullet[i].getHeight(), null);
+                    }
+                }
+                break;
+            case State.DOUBLE:
+                for(int i=0; i<4; i++){
+                    if(doubleBullet[i].getActive()){
+                        g.drawImage(bulletImg, doubleBullet[i].getX(), doubleBullet[i].getY(), doubleBullet[i].getWidth(), doubleBullet[i].getHeight(), null);
+                    }
+                }
+                break;
+            case State.POWER:
+                for(int i=0; i<3; i++){
+                    if(powerBullet[i].getActive()){
+                        g.drawImage(blueBulletImg, powerBullet[i].getX(), powerBullet[i].getY(), powerBullet[i].getWidth(), powerBullet[i].getHeight(), null);
+                    }
+                }
+                break;
         }
-        if(bullet.getY() < -48){ // Nếu hình ảnh viên đạn vượt ra khỏi phần nhìn thấy của frame
-            shoot = 0; // Không hiện hình ảnh viên đạn đó nữa (nhìn if bên trên). Cho phép bắn viên đạn mới nếu đã nhấn phím Space
+        for(int i=0; i<5; i++){
+            if(item[i].getDrop()){
+                g.drawImage(item[i].getImage(), item[i].getX(), item[i].getY(), item[i].getWidth(), item[i].getHeight(), null);
+            }
         }
         for(int i=0; i<starNumber; i++){
             g.drawImage(starImg, star.get(i).getX(), star.get(i).getY(), star.get(i).getWidth(), star.get(i).getHeight(), null);
@@ -103,8 +144,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.PLAIN, 30));
-        g.drawString("SCORE " + playerScore, 5, 40);
-        g.drawString("HEALTH " + playerHealth, 5, 85);
+        g.drawString("SCORE " + player.getScore(), 5, 40);
+        g.drawString("HEALTH " + player.getHealth(), 5, 85);
         if(gameOver){
             g.setColor(Color.RED);
             g.setFont(new Font("Arial", Font.BOLD, 50));
@@ -115,28 +156,115 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             g.setFont(new Font("Arial", Font.BOLD, 50));
             g.drawString("PAUSE", WIDTH/2 - 100, HEIGHT/2);
         }
-        //g.dispose(); // giải phóng tài nguyên mà đối tượng Graphics đang sử dụng 
+        g.dispose(); // giải phóng tài nguyên mà đối tượng Graphics đang sử dụng 
     }
     
-    public void update(){ // Hàm dùng để cập nhật vị trí của player
-        if(gameState == State.PLAY){
+    public void update(){ // Hàm dùng để cập nhật thông số cho các vật thể ở mỗi frame mới (vị trí của player, enemy, sinh thêm enemy, xử lý va chạm vât thể,...)
+        if(gameState == State.PLAY){ // Cập nhật biến đếm thời gian timeCounter
             timeCounter++;
         }
-        if(move == 1){
+        if(player.getHealth() <= 0){ // Cập nhật trạng thái gameOver
+            player.setHealth(0);
+            gameOver = true;
+            bgMusic.stop();
+        }
+        if(move == 1){ // Cập nhật di chuyển player 
             player.setX(player.getX() + player.getVx());
         }
         else if(move == -1){
             player.setX(player.getX() - player.getVx());
         }
-        if(shoot == 1){
-            bullet.setY(bullet.getY() - bullet.getVy());
+        switch(bulletState){ // Cập nhật di chuyển của đạn
+            case State.BASIC:
+                for(int i=0; i<2; i++){
+                    if(basicBullet[i].getActive()){
+                        basicBullet[i].setY(basicBullet[i].getY() - basicBullet[i].getVy());
+                        if(basicBullet[i].getY() < -48){
+                            basicBullet[i].setActive(false);
+                        }
+                    }
+                }
+                break;
+            case State.DOUBLE:
+                for(int i=0; i<4; i++){
+                    if(doubleBullet[i].getActive()){
+                        doubleBullet[i].setY(doubleBullet[i].getY() - doubleBullet[i].getVy());
+                        if(doubleBullet[i].getY() < -48){
+                            doubleBullet[i].setActive(false);
+                        }
+                    }
+                }
+                break;
+            case State.POWER:
+                for(int i=0; i<3; i++){
+                    if(powerBullet[i].getActive()){
+                        powerBullet[i].setY(powerBullet[i].getY() - powerBullet[i].getVy());
+                        if(powerBullet[i].getY() < -48){
+                            powerBullet[i].setActive(false);
+                        }
+                    }
+                }
+                break;
         }
-        if(playerHealth < 0){
-            playerHealth = 0;
-            gameOver = true;
-            bgMusic.stop();
+        for(int i=0; i<5; i++){
+            if(item[i].getDrop()){
+                item[i].setY(item[i].getY() + item[i].getVy());
+                double distance = Math.sqrt(Math.pow(item[i].getX() - player.getX(), 2) + Math.pow(item[i].getY() - player.getY(), 2));
+                if(distance < 48){
+                    item[i].setEffectCounter(item[i].getEffectDuration());
+                    item[i].setDrop(false);
+                    item[i].setX(WIDTH);
+                    item[i].setY(HEIGHT + 200);
+                    switch(item[i].getType()){
+                        case State.RANDOM:
+                            int tmp = random.nextInt(2);
+                            if(tmp == 0) bulletState = State.DOUBLE;
+                            else bulletState = State.POWER;
+                            break;
+                        case State.DOUBLE, State.POWER:
+                            bulletState = item[i].getType();
+                            break;
+                        case State.RECOVER:
+                            player.setHealth(player.getMaxHealth());
+                            break;
+                        case State.SPEEDUP:
+                            player.setVx(8);
+                            break;
+                    }     
+                }
+            }
         }
-        if(timeCounter % 50 == 0){
+        
+        for(int i=0; i<5; i++){
+            if(item[i].getEffectCounter() > 0){
+                item[i].setEffectCounter(item[i].getEffectCounter() - 1);
+            }
+            else if(i == 4){
+                player.setVx(5);
+            }
+        }
+        
+        boolean checkEffect = false;
+        for(int i=0; i<3; i++){
+            if(item[i].getEffectCounter() > 0){
+                checkEffect = true;
+                // Vấn đề: khi ăn nhiều item khi item cũ chưa hết hiệu lực và sự kiểm tra item cũ
+                /* Nếu bulletState khác State.BASIC thì mới gán lại = State.BASIC vì khi 1 item đã nhận sắp hết thời gian, ta ăn thêm 1 item khác thì nếu item cũ hết hiệu 
+                lực thì trạng thái đạn sẽ trở về BASIC dù item mới chưa hết hiệu lực. Do đó, dùng thêm biến checkEffect để đảm bảo chỉ set bulletState = BASIC khi tất cả item đều hết hiệu lực */
+            }
+        }
+        if(!checkEffect) bulletState = State.BASIC;
+        
+        if(timeCounter % 500 == 0){
+            int tmp = random.nextInt(5);
+            if(!item[tmp].getDrop()){
+                item[tmp].setX(random.nextInt(WIDTH - 48) + 0);
+                item[tmp].setY(-random.nextInt(48));
+                item[tmp].setEffectCounter(item[tmp].getEffectDuration());
+                item[tmp].setDrop(true);
+            }
+        }
+        if(timeCounter % 50 == 0){ // Sinh các ngôi sao rơi xuống theo chu kỳ thời gian
             starNumber++;
             Entity newStar = new Entity(2, 10, 10);
             newStar.setX(random.nextInt(WIDTH - 48) + 0);
@@ -162,24 +290,18 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
         for(int i=0; i<enemyNumber; i++){
             enemy.get(i).setY(enemy.get(i).getY() + enemy.get(i).getVy());
-            double distance1 = Math.sqrt(Math.pow(enemy.get(i).getX() - bullet.getX(), 2) + Math.pow(enemy.get(i).getY() - bullet.getY(), 2));
             double distance2 = Math.sqrt(Math.pow(enemy.get(i).getX() - player.getX(), 2) + Math.pow(enemy.get(i).getY() - player.getY(), 2));
-            if(distance1 < 48){ // Nếu đạn bắn trúng enemy -> enemy chết. Đáng lẽ phải xoá enemy khỏi ArrayList, nhưng làm vậy rất phức tạp. Nên ta làm như sau:
-                enemy.get(i).setHealth(enemy.get(i).getHealth() - 20);
-                if(enemy.get(i).getHealth() <= 0){ 
-                    enemy.get(i).setX(WIDTH);   // Đưa tất cả enemy bị chết vào 1 điểm có toạ độ (WIDTH, HEIGHT + 2000) (gọi là điểm chết - địa ngục)
-                    enemy.get(i).setY(HEIGHT + 2000);    
-                    enemy.get(i).setVy(0);  // Cho vận tốc của enemy đó xuống 0, vì ng chết ko di chuyển. Để toạ độ enemy đó luôn luôn cố định ở điểm chết
-                    playerScore += enemy.get(i).getPoint();
-                }
-                bullet.setX(WIDTH);
-                bullet.setY(HEIGHT + 200); // Quan trọng: nếu ko thiết lập lại vị trí của bullet sau khi trúng địch, bullet sẽ luôn ở vị trí đó cho đến lần bấm Space để bắn tiếp theo
-                // dẫn tới việc enemy đi đến vị trí đó sẽ chết do kích hoạt điều kiện if này dù màn hình ko hiển thị hình ảnh bullet do biến shoot = 0
-                // Tương tự enemy, ta cũng thiết lập để sau khi trúng địch, bullet sẽ nằm tại 1 điểm (WIDTH, HEIGHT + 200) gọi là điểm đạn
-                shoot = 0; 
+            for(int j=0; j<2; j++){
+                basicBullet[j].onHit(enemy.get(i), player);
+            }
+            for(int j=0; j<4; j++){
+                doubleBullet[j].onHit(enemy.get(i), player);
+            }
+            for(int j=0; j<3; j++){
+                powerBullet[j].onHit(enemy.get(i), player);
             }
             if(distance2 < 48){ // Nếu enemy đâm vào player -> thì thôi, cho enemy tái sinh đi, mình chỉ cần enemy chết khi bắn trúng để không xuất hiện quá nhiều enemy thôi!
-                playerHealth -= 10;
+                player.setHealth(player.getHealth() - 10);
                 if(enemy.get(i).getType().equals("Assault Spaceship")){ // Chỉ cho loại enemy này tái sinh, còn enemy kia thì mạnh hơn nên cho die luôn
                     enemy.get(i).setX(random.nextInt(WIDTH - 48) + 0);
                     enemy.get(i).setY(-random.nextInt(48));
@@ -192,7 +314,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 }
             }
             if(enemy.get(i).getY() > HEIGHT + 48 && enemy.get(i).getY() < HEIGHT + 100){ // Thêm điều kiện sau vì khi enemy trúng đạn -> bị xuống điểm chết -> playerHealth bị trừ, sau đó enemy tái sinh
-                playerHealth -= 5;
+                player.setHealth(player.getHealth() - 5);
                 if(enemy.get(i).getType().equals("Assault Spaceship")){
                     enemy.get(i).setX(random.nextInt(WIDTH - 48) + 0);
                     enemy.get(i).setY(-random.nextInt(48));
@@ -242,10 +364,42 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 move = 1;
                 break;
             case KeyEvent.VK_SPACE:
-                if(shoot == 0 && gameState == State.PLAY){ // Nếu shoot = 0 thì khởi tạo lại vị trí viên đạn (bắn viên đạn mới). Có thêm đkien gameState == State.PLAY vì nút bắn trùng với nút tiếp tục
-                    bullet.setX(player.getX());
-                    bullet.setY(player.getY() + 20);
-                    shoot = 1;
+                if(gameState == State.PLAY){
+                    switch(bulletState){
+                        case State.BASIC:
+                            for(int i=0; i<2; i++){
+                                if(!basicBullet[i].getActive()){
+                                    basicBullet[i].setX(player.getX());
+                                    basicBullet[i].setY(player.getY() + 20);
+                                    basicBullet[i].setActive(true);
+                                    break;
+                                }
+                            }
+                            break;
+                        case State.DOUBLE:
+                            for(int i=0; i<4; i+=2){
+                                if(!doubleBullet[i].getActive() && !doubleBullet[i + 1].getActive()){
+                                    doubleBullet[i].setX(player.getX() - 20);
+                                    doubleBullet[i].setY(player.getY() + 20);
+                                    doubleBullet[i].setActive(true);
+                                    doubleBullet[i + 1].setX(player.getX() + 20);
+                                    doubleBullet[i + 1].setY(player.getY() + 20);
+                                    doubleBullet[i + 1].setActive(true);
+                                    break;
+                                }
+                            }
+                            break;
+                        case State.POWER:
+                            for(int i=0; i<3; i++){
+                                if(!powerBullet[i].getActive()){
+                                    powerBullet[i].setX(player.getX());
+                                    powerBullet[i].setY(player.getY() + 20);
+                                    powerBullet[i].setActive(true);
+                                    break;
+                                }
+                            }
+                            break;
+                    }
                 }
                 else if(gameState == State.PAUSE){
                     gameState = State.PLAY;

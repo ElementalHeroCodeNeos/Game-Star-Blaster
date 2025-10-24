@@ -40,6 +40,10 @@ public class Entity {
         return this.vx;
     }
     
+    public void setVx(int vx){
+        this.vx = vx;
+    }
+    
     public int getVy(){
         return this.vy;
     }
