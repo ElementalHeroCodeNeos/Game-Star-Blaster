@@ -1,23 +1,27 @@
 package starblaster;
 
+import java.awt.image.BufferedImage;
+
 public class Enemy extends Entity {
-    private int health, maxHealth, point;
-    private String type;
+    private int health, maxHealth, power, point;
+    private BufferedImage image;
     
-    public Enemy(int vy, int width, int height, int health, int maxHealth, int point, String type){
-        super(vy, width, height);
+    public Enemy(int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive){
+        super(vy, width, height, isActive);
         this.health = health;
         this.maxHealth = maxHealth;
+        this.power = power;
         this.point = point;
-        this.type = type;
+        this.image = image;
     }
     
-    public Enemy(int x, int y, int vx, int vy, int width, int height, int health, int maxHealth, int point, String type){
-        super(x, y, vx, vy, width, height);
+    public Enemy(int x, int y, int vx, int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive){
+        super(x, y, vx, vy, width, height, isActive);
         this.health = health;
         this.maxHealth = maxHealth;
+        this.power = power;
         this.point = point;
-        this.type = type;
+        this.image = image;
     }
     
     public int getHealth(){
@@ -36,15 +40,15 @@ public class Enemy extends Entity {
         this.maxHealth = maxHealth;
     }
     
+    public int getPower(){
+        return this.power;
+    }
+    
     public int getPoint(){
         return this.point;
     }
     
-    public String getType(){
-        return this.type;
-    } 
-    
-    public void setType(String type){
-        this.type = type;
+    public BufferedImage getImage(){
+        return this.image;
     }
 }

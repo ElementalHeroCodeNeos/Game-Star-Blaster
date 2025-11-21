@@ -17,24 +17,77 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private int WIDTH = 800;
     private int HEIGHT = 600;
     private State gameState = State.PLAY;
-    private State bulletState = State.POWER;
+    private State bulletState = State.BASIC;
     private boolean gameOver = false;
     private BufferedImage backgroundImg;
-    private BufferedImage playerImg, starImg, bulletImg, blueBulletImg, randomImg, heartImg, thunderImg, enemyImg1, enemyImg2;
+    private BufferedImage playerImg, starImg, bulletImg, blueBulletImg, randomImg, heartImg, thunderImg, doubleImg, powerImg, enemyImg1, enemyImg2, enemyImg3, enemyImg4, explosionImg;
     private Player player;
     private Item[] item = new Item[5];
     private Bullet[] basicBullet = new Bullet[2];
     private Bullet[] doubleBullet = new Bullet[4];
     private Bullet[] powerBullet = new Bullet[3];
-    private ArrayList<Entity> star = new ArrayList<>();
-    private int starNumber = 3;
-    private ArrayList<Enemy> enemy = new ArrayList<>();
-    private int enemyNumber = 1;
+    private Entity[] star = new Entity[30];
+    private Enemy[] grunt = new Enemy[20];
+    private Enemy[] elite = new Enemy[10];
+    private Enemy[] commander = new Enemy[5];
+    private Enemy boss;
+    private Explosion[] exploList = new Explosion[50];
     private Thread thread;
     private long timeCounter = 0; // Bộ đếm thời gian (tính bằng ticks)
     private int move = 0; // move = -1 là di chuyển sang trái, move = 1 là di chuyển sang phải, move = 0 là đứng yên
     private Random random = new Random();
     private Sound bgMusic;
+    
+    public void setActiveBulletList(){ // Thiết lập biến kiểm tra hoạt động (isActive) của tất cả các loại đạn về false
+        for(Bullet bullet : basicBullet){
+            bullet.setActive(false);
+        }
+        for(Bullet bullet : doubleBullet){
+            bullet.setActive(false);
+        }
+        for(Bullet bullet : powerBullet){
+            bullet.setActive(false);
+        }
+    }
+    
+    public void drawEnemyList(Graphics g, Enemy[] enemyList){ // Vẽ danh sách các enemy cùng loại
+        for(Enemy enemy : enemyList){
+            if(enemy.getActive()){
+                g.drawImage(enemy.getImage(), enemy.getX(), enemy.getY(), enemy.getWidth(), enemy.getHeight(), null);
+            }
+        }
+    }
+    
+    public void handleHit(Bullet[] bulletList, Enemy enemy){ // Xử lý sự kiện va chạm của 1 loại bullet với 1 enemy
+        for(Bullet bullet : bulletList){
+            if(bullet.getActive()){
+                bullet.onHit(enemy, player, exploList);
+            }
+        }
+    }
+    
+    public void updateEnemy(Enemy[] enemyList){ // Xử lý các sự kiện của Enemy (di chuyển, va chạm với đạn, va chạm với người chơi và ra khỏi khung hình) 
+        for(Enemy enemy : enemyList){
+            if(enemy.getActive()){
+                enemy.setY(enemy.getY() + enemy.getVy());
+                
+                handleHit(basicBullet, enemy);
+                handleHit(doubleBullet, enemy);
+                handleHit(powerBullet, enemy);
+                
+                double distance = Math.sqrt(Math.pow(enemy.getX() - player.getX(), 2) + Math.pow(enemy.getY() - player.getY(), 2));
+                if(distance < 48){ // Nếu enemy đâm vào player -> thì thôi, cho enemy tái sinh đi, mình chỉ cần enemy chết khi bắn trúng để không xuất hiện quá nhiều enemy thôi!
+                    player.setHealth(player.getHealth() - enemy.getPower());
+                    enemy.setActive(false);
+                }
+                
+                if(enemy.getY() > HEIGHT + 48){ 
+                    player.setHealth(player.getHealth() - enemy.getPower() / 2);
+                    enemy.setActive(false);
+                }
+            }
+        }
+    }
     
     public GamePanel(){
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -54,16 +107,21 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             blueBulletImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/blueFireBullet.png"));
             // Hàm getSubimage() dùng để cắt một phần ảnh từ ảnh gốc. Tham số: hoành độ bắt đầu cắt, tung độ bắt đầu cắt, độ dài muốn cắt chiều ngang, độ dài muốn cắt chiều dọc
             enemyImg1 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/assaultspaceship.png"));
-            enemyImg2 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/ufo.png"));
+            enemyImg2 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/violetpoison.png"));
+            enemyImg3 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/goblin.png"));
             randomImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/randomitem.png"));
             heartImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/heart.png"));
             thunderImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/thunder.png"));
+            doubleImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/double.png"));
+            powerImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/power.png"));
+            explosionImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/explosion.png"));
         }
         catch(Exception e){ // biến e lưu thông tin của lỗi bắt được
             e.printStackTrace(); // In ra dấu vết của lỗi (vị trí lỗi,...)
         }
         // Khởi tạo dữ liệu cho player và bullet
-        player = new Player(WIDTH/2 - 48/2, HEIGHT - 90, 5, 5, 48, 48, 100, 100, 0); // Ta để width và height bằng 48 dù trong ảnh gốc, mỗi vật thể chỉ là 16, 16 vì 16 thì nhỏ quá :)
+        player = new Player(WIDTH/2 - 48/2, HEIGHT - 90, 0, 6, 48, 48, 100, 100, 0); // Ta để width và height bằng 48 dù trong ảnh gốc, mỗi vật thể chỉ là 16, 16 vì 16 thì nhỏ quá :)
+        
         for(int i=0; i<2; i++){
             basicBullet[i] = new Bullet(WIDTH, HEIGHT + 200, 0, 5, 48, 48, 20, false);
         } // Ban đầu, khi chưa nhấn Space để bắn, bullet nằm tại điểm đạn (chứ mà ko thiết lập thì mặc định là (0, 0) thì có thể bị gần toạ độ enemy mới tạo -> playerScore tăng dù ko bắn
@@ -73,23 +131,32 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         for(int i=0; i<3; i++){
             powerBullet[i] = new Bullet(WIDTH, HEIGHT + 200, 0, 8, 48, 48, 40, false);
         }
+        
         item[0] = new Item(2, 48, 48, State.RANDOM, randomImg, 1200, -1, false);
-        item[1] = new Item(2, 48, 48, State.DOUBLE, randomImg, 1200, -1, false);
-        item[2] = new Item(2, 48, 48, State.POWER, randomImg, 1200, -1, false);
+        item[1] = new Item(2, 48, 48, State.DOUBLE, doubleImg, 1200, -1, false);
+        item[2] = new Item(2, 48, 48, State.POWER, powerImg, 1200, -1, false);
         item[3] = new Item(2, 48, 48, State.RECOVER, heartImg, 1200, -1, false);
         item[4] = new Item(2, 48, 48, State.SPEEDUP, thunderImg, 1200, -1, false);
-        for(int i=0; i<starNumber; i++){
-            Entity newStar = new Entity(3, 10, 10);
-            newStar.setX(random.nextInt(WIDTH - 48) + 0);
-            newStar.setY(-random.nextInt(48));
-            star.add(newStar);
+        
+        for(int i=0; i<30; i++){
+            star[i] = new Entity(2, 10, 10, false);
         }
-        for(int i=0; i<enemyNumber; i++){
-            Enemy newEnemy = new Enemy(1, 48, 48, 20, 20, 1, "Assault Spaceship"); // Loại enemy này có maxHealth = 20  
-            newEnemy.setX(random.nextInt(WIDTH - 48) + 0);
-            newEnemy.setY(-random.nextInt(48));
-            enemy.add(newEnemy);
+        
+        for(int i=0; i<20; i++){
+            grunt[i] = new Enemy(1, 48, 48, 20, 20, 10, 1, enemyImg1, false); // Loại enemy này có maxHealth = 20  
         }
+        for(int i=0; i<10; i++){
+            elite[i] = new Enemy(1, 48, 48, 40, 40, 20, 5, enemyImg2, false);
+        }
+        for(int i=0; i<5; i++){
+            commander[i] = new Enemy(1, 48, 48, 100, 100, 60, 20, enemyImg3, false);
+        }
+        boss = new Enemy(1, 48, 48, 300, 300, 100, 100, enemyImg4, false);
+        
+        for(int i=0; i<50; i++){
+            exploList[i] = new Explosion(64, 64, false);
+        }
+
         // Java cho phép mỗi ctrinh chạy nhiều luồng cùng lúc -> giúp không làm đơ GUI, thực hiện nhiều tác vụ đồng thời và game loop chạy mượt mà 
         thread = new Thread(this); // Lớp Thread dùng để tạo và chạy 1 luồng riêng biệt
         thread.start(); // Tạo 1 luồng mới và chạy hàm run() của đối tượng thuộc lớp Runnable đã truyền vào. Dòng trên truyền vào this - đối tượng GamePanel cũng được vì lớp GamePanel đã kế thừa lớp Runnable  
@@ -103,6 +170,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         super.paintComponent(g); // Vẽ nền (như kiểu phác thảo, phân bố cục của tranh). Sau đó ta bổ sung lệnh để vẽ chi tiết (kiểu các vật thể, hình ảnh và tô màu)
         g.drawImage(backgroundImg, 0, 0, 800, 600, null);
         g.drawImage(playerImg, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
+        
         switch(bulletState){
             case State.BASIC:
                 for(int i=0; i<2; i++){
@@ -126,22 +194,32 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 }
                 break;
         }
+        
         for(int i=0; i<5; i++){
-            if(item[i].getDrop()){
+            if(item[i].getActive()){
                 g.drawImage(item[i].getImage(), item[i].getX(), item[i].getY(), item[i].getWidth(), item[i].getHeight(), null);
             }
         }
-        for(int i=0; i<starNumber; i++){
-            g.drawImage(starImg, star.get(i).getX(), star.get(i).getY(), star.get(i).getWidth(), star.get(i).getHeight(), null);
-        }
-        for(int i=0; i<enemyNumber; i++){
-            if(enemy.get(i).getY() != HEIGHT + 100){    // Nếu enemy chưa chết thì mới vẽ, để đỡ tốn bộ nhớ
-                if(enemy.get(i).getType().equals("Assault Spaceship")){
-                    g.drawImage(enemyImg1, enemy.get(i).getX(), enemy.get(i).getY(), enemy.get(i).getWidth(), enemy.get(i).getHeight(), null);
-                }
-                else g.drawImage(enemyImg2, enemy.get(i).getX(), enemy.get(i).getY(), enemy.get(i).getWidth(), enemy.get(i).getHeight(), null);
+        
+        for(int i=0; i<30; i++){
+            if(star[i].getActive()){
+                g.drawImage(starImg, star[i].getX(), star[i].getY(), star[i].getWidth(), star[i].getHeight(), null);
             }
         }
+        
+        drawEnemyList(g, grunt);
+        drawEnemyList(g, elite);
+        drawEnemyList(g, commander);
+        if(boss.getActive()){
+            g.drawImage(boss.getImage(), boss.getX(), boss.getY(), boss.getWidth(), boss.getHeight(), null);
+        }
+        
+        for(Explosion explosion : exploList){
+            if(explosion.getActive()){
+                g.drawImage(explosionImg, explosion.getX(), explosion.getY(), explosion.getWidth(), explosion.getHeight(), null);
+            }
+        }
+        
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.PLAIN, 30));
         g.drawString("SCORE " + player.getScore(), 5, 40);
@@ -206,124 +284,120 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 }
                 break;
         }
-        for(int i=0; i<5; i++){
-            if(item[i].getDrop()){
-                item[i].setY(item[i].getY() + item[i].getVy());
+        for(int i=0; i<5; i++){ // Xử lý sự kiện người chơi ăn Item
+            if(item[i].getActive()){ 
+                item[i].setY(item[i].getY() + item[i].getVy()); // Xử lý sự di chuyển của Item
                 double distance = Math.sqrt(Math.pow(item[i].getX() - player.getX(), 2) + Math.pow(item[i].getY() - player.getY(), 2));
                 if(distance < 48){
-                    item[i].setEffectCounter(item[i].getEffectDuration());
-                    item[i].setDrop(false);
-                    item[i].setX(WIDTH);
-                    item[i].setY(HEIGHT + 200);
+                    item[i].setEffectCounter(item[i].getEffectDuration()); // Khởi tạo bộ đếm thời gian hiệu lực của Item về ban đầu
+                    item[i].setActive(false);
                     switch(item[i].getType()){
                         case State.RANDOM:
                             int tmp = random.nextInt(2);
                             if(tmp == 0) bulletState = State.DOUBLE;
                             else bulletState = State.POWER;
+                            setActiveBulletList();
                             break;
                         case State.DOUBLE, State.POWER:
                             bulletState = item[i].getType();
+                            setActiveBulletList();
                             break;
                         case State.RECOVER:
                             player.setHealth(player.getMaxHealth());
                             break;
                         case State.SPEEDUP:
-                            player.setVx(8);
+                            player.setVx(9);
                             break;
                     }     
                 }
             }
         }
         
-        for(int i=0; i<5; i++){
-            if(item[i].getEffectCounter() > 0){
+        for(int i=0; i<5; i++){ // Xử lý sự giảm bộ đếm thời gian Item và sự kiện các Item khác (đạn) hết hiệu lực
+            if(item[i].getEffectCounter() > 0){ // Giảm bộ đếm hiệu lực Item xuống 1 đơn vị
                 item[i].setEffectCounter(item[i].getEffectCounter() - 1);
             }
-            else if(i == 4){
-                player.setVx(5);
+            else if(i == 4){ // Item tăng tốc hết hiệu lực
+                player.setVx(6);
             }
         }
         
-        boolean checkEffect = false;
-        for(int i=0; i<3; i++){
+        boolean checkEffect = false; // Xử lý sự kiện các Item đạn hết hiệu lực (Chỉ cho bullet về lại trạng thái BASIC khi tất cả các Item đạn đều hết hiệu lực)
+        for(int i=0; i<3; i++){ // Xét các Item thay đổi đạn
             if(item[i].getEffectCounter() > 0){
                 checkEffect = true;
+                break;
                 // Vấn đề: khi ăn nhiều item khi item cũ chưa hết hiệu lực và sự kiểm tra item cũ
                 /* Nếu bulletState khác State.BASIC thì mới gán lại = State.BASIC vì khi 1 item đã nhận sắp hết thời gian, ta ăn thêm 1 item khác thì nếu item cũ hết hiệu 
-                lực thì trạng thái đạn sẽ trở về BASIC dù item mới chưa hết hiệu lực. Do đó, dùng thêm biến checkEffect để đảm bảo chỉ set bulletState = BASIC khi tất cả item đều hết hiệu lực */
+                lực thì trạng thái đạn sẽ trở về BASIC dù item mới chưa hết hiệu lực. Do đó, dùng thêm biến checkEffect để đảm bảo chỉ set bulletState = BASIC khi tất cả item đạn đều hết hiệu lực */
             }
         }
-        if(!checkEffect) bulletState = State.BASIC;
+        if(!checkEffect) bulletState = State.BASIC; 
         
         if(timeCounter % 500 == 0){
             int tmp = random.nextInt(5);
-            if(!item[tmp].getDrop()){
+            if(!item[tmp].getActive()){
                 item[tmp].setX(random.nextInt(WIDTH - 48) + 0);
                 item[tmp].setY(-random.nextInt(48));
                 item[tmp].setEffectCounter(item[tmp].getEffectDuration());
-                item[tmp].setDrop(true);
+                item[tmp].setActive(true);
             }
         }
         if(timeCounter % 50 == 0){ // Sinh các ngôi sao rơi xuống theo chu kỳ thời gian
-            starNumber++;
-            Entity newStar = new Entity(2, 10, 10);
-            newStar.setX(random.nextInt(WIDTH - 48) + 0);
-            newStar.setY(-random.nextInt(48));
-            star.add(newStar);
-        }
-        for(int i=0; i<starNumber; i++){
-            star.get(i).setY(star.get(i).getY() + star.get(i).getVy());
-        }
-        if((timeCounter <= 3600 && timeCounter % 100 == 0) || (timeCounter > 3600 && timeCounter < 7200 && timeCounter % 80 == 0) || (timeCounter >= 7200 && timeCounter % 50 == 0)){
-            enemyNumber++;
-            Enemy newEnemy = new Enemy(1, 48, 48, 20, 20, 1, "Assault Spaceship");
-            newEnemy.setX(random.nextInt(WIDTH - 48) + 0);
-            newEnemy.setY(-random.nextInt(48));
-            enemy.add(newEnemy);
-        }
-        if(timeCounter > 1800 && timeCounter % 800 == 0){
-            enemyNumber++;
-            Enemy newEnemy = new Enemy(1, 48, 48, 40, 40, 5, "UFO"); // Loại enemy này có maxHealth = 40
-            newEnemy.setX(random.nextInt(WIDTH - 48) + 0);
-            newEnemy.setY(-random.nextInt(48));
-            enemy.add(newEnemy);
-        }
-        for(int i=0; i<enemyNumber; i++){
-            enemy.get(i).setY(enemy.get(i).getY() + enemy.get(i).getVy());
-            double distance2 = Math.sqrt(Math.pow(enemy.get(i).getX() - player.getX(), 2) + Math.pow(enemy.get(i).getY() - player.getY(), 2));
-            for(int j=0; j<2; j++){
-                basicBullet[j].onHit(enemy.get(i), player);
+            for(int i=0; i<30; i++){
+                if(!star[i].getActive()){
+                    star[i].setActive(true);
+                    star[i].setX(random.nextInt(WIDTH - 48) + 0);
+                    star[i].setY(-random.nextInt(48));
+                    break;
+                }
             }
-            for(int j=0; j<4; j++){
-                doubleBullet[j].onHit(enemy.get(i), player);
+        }
+        for(int i=0; i<30; i++){ // Xử lý sự di chuyển của các ngôi sao
+            if(star[i].getActive()){
+                star[i].setY(star[i].getY() + star[i].getVy());
             }
-            for(int j=0; j<3; j++){
-                powerBullet[j].onHit(enemy.get(i), player);
+            if(star[i].getY() > HEIGHT + 48){
+                star[i].setActive(false);
             }
-            if(distance2 < 48){ // Nếu enemy đâm vào player -> thì thôi, cho enemy tái sinh đi, mình chỉ cần enemy chết khi bắn trúng để không xuất hiện quá nhiều enemy thôi!
-                player.setHealth(player.getHealth() - 10);
-                if(enemy.get(i).getType().equals("Assault Spaceship")){ // Chỉ cho loại enemy này tái sinh, còn enemy kia thì mạnh hơn nên cho die luôn
-                    enemy.get(i).setX(random.nextInt(WIDTH - 48) + 0);
-                    enemy.get(i).setY(-random.nextInt(48));
-                    enemy.get(i).setHealth(enemy.get(i).getMaxHealth());
+        }
+        // Sinh các địch thuộc loại grunt mới theo thời gian
+        if((timeCounter <= 3600 && timeCounter % 150 == 0) || (timeCounter > 3600 && timeCounter < 7200 && timeCounter % 100 == 0) || (timeCounter >= 7200 && timeCounter % 80 == 0)){
+            for(int i=0; i<20; i++){
+                if(!grunt[i].getActive()){
+                    grunt[i].setX(random.nextInt(WIDTH - 48) + 0);
+                    grunt[i].setY(-random.nextInt(48));
+                    grunt[i].setHealth(grunt[i].getMaxHealth());
+                    grunt[i].setActive(true);
+                    break;
+                }
+            }
+        }
+        // Sinh các địch elite mới theo thời gian
+        if(timeCounter % 200 == 0){
+            for(int i=0; i<10; i++){
+                if(!elite[i].getActive()){
+                    elite[i].setX(random.nextInt(WIDTH - 48) + 0);
+                    elite[i].setY(-random.nextInt(48));
+                    elite[i].setHealth(elite[i].getMaxHealth());
+                    elite[i].setActive(true);
+                    break;
+                }
+            }
+        }
+        
+        updateEnemy(grunt); 
+        updateEnemy(elite);
+        updateEnemy(commander);
+        // updateEnemy(boss);
+        
+        for(Explosion explosion : exploList){ // Xử lý thời gian hiển thị vụ nổ (Explosion)
+            if(explosion.getActive()){
+                if(explosion.getDisplayTime() > 0){
+                    explosion.setDisplayTime(explosion.getDisplayTime() - 1);
                 }
                 else{
-                    enemy.get(i).setX(WIDTH); // 3 dòng code này nghĩa là enemy die hẳn
-                    enemy.get(i).setY(HEIGHT + 2000);
-                    enemy.get(i).setVy(0);
-                }
-            }
-            if(enemy.get(i).getY() > HEIGHT + 48 && enemy.get(i).getY() < HEIGHT + 100){ // Thêm điều kiện sau vì khi enemy trúng đạn -> bị xuống điểm chết -> playerHealth bị trừ, sau đó enemy tái sinh
-                player.setHealth(player.getHealth() - 5);
-                if(enemy.get(i).getType().equals("Assault Spaceship")){
-                    enemy.get(i).setX(random.nextInt(WIDTH - 48) + 0);
-                    enemy.get(i).setY(-random.nextInt(48));
-                    enemy.get(i).setHealth(enemy.get(i).getMaxHealth());
-                }
-                else{
-                    enemy.get(i).setX(WIDTH);
-                    enemy.get(i).setY(HEIGHT + 2000);
-                    enemy.get(i).setVy(0);
+                    explosion.setActive(false);
                 }
             }
         }
