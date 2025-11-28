@@ -2,53 +2,49 @@ package starblaster;
 
 import java.awt.image.BufferedImage;
 
-public class Vanguard extends Enemy {
+public class Vanguard extends Commander {
+    private int state = 1; // Trạng thái di chuyển của Vanguard
     public Vanguard(int vx, int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive){
-        super(vy, width, height, health, maxHealth, power, point, image, isActive);
-        this.vx = vx;
+        super(vx, vy, width, height, health, maxHealth, power, point, image, isActive);
     }
     
-    public Vanguard(int vx, int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive, int maxBullets){
-        super(vy, width, height, health, maxHealth, power, point, image, isActive);
-        this.vx = vx;
-        this.maxBullets = maxBullets;
-        this.bullets = new Bullet[maxBullets];
-        for(int i=0; i<this.maxBullets; i++){
-            this.bullets[i] = new Bullet(this.x, this.y, 0, 3, 48, 48, 5, false);
-        }
+    public Vanguard(int vx, int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive, int maxBullets, int powerBullet){
+        super(vx, vy, width, height, health, maxHealth, power, point, image, isActive, maxBullets, powerBullet);
     }
 
     @Override
     public void move(long timeCounter, double playerX, double playerY){
-        parabolMove(timeCounter, playerX, playerY);
-    }
-    
-    @Override
-    public void shoot(long timeCounter, Player player){
-        for(Bullet bullet : bullets){
-            if(!bullet.getActive() && timeCounter % 120 == 0){
-                bullet.setActive(true);
-                bullet.setX(this.x);
-                bullet.setY(this.y);
-                break;
+        if(state == 1){
+            super.sideMove(WIDTH);
+            if(this.direction == -1){ // Khi Vanguard chạm vào cạnh thẳng đứng (điều kiện dùng để xác định thời điểm chuyển state)
+                state = 2;
+                this.dx = this.x;
+                this.dy = this.y;
             }
         }
-        for(Bullet bullet : bullets){
-            if(bullet.getActive()){
-                bullet.setY(bullet.getY() + bullet.getVy());
+        else if(state == 2){
+            super.parabolMove(timeCounter, playerX, playerY);
+            if(this.y > HEIGHT + this.height){
+                state = 3;
+                this.vx = 0;
+                this.vy *= -1;
             }
         }
-        for(Bullet bullet : bullets){
-            if(bullet.getActive()){
-                double distance = Math.sqrt(Math.pow(bullet.getX() - player.x, 2) + Math.pow(bullet.getY() - player.y, 2));
-                if(distance < 48){
-                    player.setHealth(player.getHealth() - bullet.getDamage());
-                    bullet.setActive(false);
-                }
-                if(bullet.getY() > HEIGHT + 48){
-                    bullet.setActive(false);
-                }
+        else if(state == 3){
+            super.simpleMove();
+            if(this.y == HEIGHT / 3) state = 4;
+        }
+        else if(state == 4){
+            super.sinMove(timeCounter, playerX, playerY);
+            if(this.y == 0) this.vy *= -1;
+            else if(this.y == HEIGHT / 2){
+                state = 5;
+                this.vx = 2;
             }
+        }
+        else{
+            super.chasingMove(timeCounter, playerX, playerY);
         }
     }
 }
+    

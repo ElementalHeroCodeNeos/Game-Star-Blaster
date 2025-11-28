@@ -5,11 +5,13 @@ import java.awt.image.BufferedImage;
 public class Enemy extends Entity {
     private int health, maxHealth, power, point;
     private BufferedImage image;
-    private double dx, dy;
+    protected double dx, dy;
     protected Bullet[] bullets;
     protected int maxBullets;
+    protected int powerBullet;
+    protected int direction = 1; // direction = -1: đã đổi sang hướng ngược lại (thường là khi va vào cạnh đứng)
     
-    private static final int WIDTH = 800;
+    protected static final int WIDTH = 800;
     protected static final int HEIGHT = 600;
     
     public Enemy(int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive){
@@ -72,14 +74,35 @@ public class Enemy extends Entity {
 
     public void move(long timeCounter, double playerX, double playerY){
         this.y += vy;
+        if(this.y > HEIGHT + this.height){
+            this.setActive(false);
+        }
     }
     
-    public void sinMove(long timeCounter, int frameWidth, int frameHeight, double playerX, double playerY){
+    public void simpleMove(){
+        this.y += vy;
+    }
+    
+    public void sideMove(int frameWidth){
+        this.x += this.vx;
+        if(this.x < 0){
+            this.x = 0;
+            this.vx *= -1;
+            this.direction = -1;
+        }
+        if(this.x > frameWidth - this.width){
+            this.x = frameWidth - this.width;
+            this.vx *= -1;
+            this.direction = -1;
+        }
+    }
+    
+    public void sinMove(long timeCounter, double playerX, double playerY){
         double freq = 0.02; // Tần số dao động -> tần số càng lớn, dao động càng nhanh (mạnh).
         double amplitude = 2.5; // Biên độ dao động ngang (độ lệch tối đa so với vị trí cân bằng). 
         this.x += (int)(Math.sin(timeCounter * freq) * amplitude);
         if(this.x < 0) this.x = 0;
-        if(this.x > frameWidth - this.width) this.x = frameWidth - this.width;
+        if(this.x > WIDTH - this.width) this.x = WIDTH - this.width;
         this.y += this.vy;
     }
     
@@ -108,7 +131,7 @@ public class Enemy extends Entity {
         this.y += this.vy;
     }
     
-    public void shoot(long timeCounter, Player player){
+    public void shoot(long timeCounter, Player player, int frequent){
         
     }
 }

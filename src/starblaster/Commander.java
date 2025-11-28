@@ -8,25 +8,25 @@ public class Commander extends Enemy {
         this.vx = vx;
     }
     
-    public Commander(int vx, int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive, int maxBullets){
+    public Commander(int vx, int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive, int maxBullets, int powerBullet){
         super(vy, width, height, health, maxHealth, power, point, image, isActive);
         this.vx = vx;
         this.maxBullets = maxBullets;
         this.bullets = new Bullet[maxBullets];
         for(int i=0; i<this.maxBullets; i++){
-            this.bullets[i] = new Bullet(this.x, this.y, 0, 3, 48, 48, 5, false);
+            this.bullets[i] = new Bullet(this.x, this.y, 0, 3, 48, 48, powerBullet, false);
         }
     }
 
     @Override
     public void move(long timeCounter, double playerX, double playerY){
-        parabolMove(timeCounter, playerX, playerY);
+        super.parabolMove(timeCounter, playerX, playerY);
     }
     
     @Override
-    public void shoot(long timeCounter, Player player){
+    public void shoot(long timeCounter, Player player, int frequent){
         for(Bullet bullet : bullets){
-            if(!bullet.getActive() && timeCounter % 120 == 0){
+            if(!bullet.getActive() && timeCounter % frequent == 0){
                 bullet.setActive(true);
                 bullet.setX(this.x);
                 bullet.setY(this.y);
