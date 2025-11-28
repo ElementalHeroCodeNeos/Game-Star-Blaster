@@ -6,17 +6,21 @@ public class Bullet extends Entity{
     public static final int HEIGHT = 600;
     
     public Bullet(int vy, int width, int height, int damage, boolean isActive){
-        super(vy, width, height);
+        super(vy, width, height, isActive);
         this.damage = damage;
     }
     
     public Bullet(int x, int y, int vx, int vy, int width, int height, int damage, boolean isActive){
-        super(x, y, vx, vy, width, height);
+        super(x, y, vx, vy, width, height, isActive);
         this.damage = damage;
+    }
+
+    public int getDamage() {
+        return damage;
     }
     
     public void onHit(Enemy enemy, Player player, Explosion[] exploList){
-        double distance = Math.sqrt(Math.pow(enemy.getX() - this.getX(), 2) + Math.pow(enemy.getY() - this.getY(), 2));
+        double distance = Math.sqrt(Math.pow(enemy.getX() - this.x, 2) + Math.pow(enemy.getY() - this.y, 2));
         if(distance < 48){ 
             enemy.setHealth(enemy.getHealth() - this.damage);
             if(enemy.getHealth() <= 0){ 
@@ -37,14 +41,4 @@ public class Bullet extends Entity{
             this.setActive(false);
         }
     }  
-    
-    /*public void onHitPlayer(Player player){
-        double distance = Math.sqrt(Math.pow(player.getX() - this.getX(), 2) + Math.pow(player.getY() - this.getY(), 2));
-        if(distance < 48){ 
-            player.setHealth(player.getHealth() - this.damage);
-            this.setX(WIDTH);
-            this.setY(HEIGHT + 200); 
-            this.setActive(false);
-        }
-    }*/
 }

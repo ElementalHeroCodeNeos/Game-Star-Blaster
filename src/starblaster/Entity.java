@@ -1,7 +1,7 @@
 package starblaster;
 
 public class Entity {
-    private int x, y, vx, vy, width, height; // Các tham số: hoành độ, tung độ, tốc độ dịch trái, tốc độ dịch phải, chiều rộng, chiều cao của vật thể
+    protected int x, y, vx, vy, width, height; // Các tham số: hoành độ, tung độ, tốc độ dịch trái, tốc độ dịch phải, chiều rộng, chiều cao của vật thể
     // Các thuộc tính này sẽ dùng làm thông số để vẽ hình ảnh của vật thể lên frame (coi điểm góc trái phía trên của hình ảnh là điểm đại diện cho vật thể)
     // Gốc toạ độ của frame là điểm phía trên góc trái, chiều dương trục hoành từ trái sang phải, chiều dương trục tung từ trên xuống dưới
     private boolean isActive;
@@ -23,6 +23,12 @@ public class Entity {
         this.vy = vy;
         this.width = width;
         this.height = height;
+    }
+    
+    public Entity(int width, int height, boolean isActive){
+        this.width = width;
+        this.height = height;
+        this.isActive = isActive;
     }
     
     public Entity(int vy, int width, int height, boolean isActive){

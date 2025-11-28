@@ -20,7 +20,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private State bulletState = State.BASIC;
     private boolean gameOver = false;
     private BufferedImage backgroundImg;
-    private BufferedImage playerImg, starImg, bulletImg, blueBulletImg, randomImg, heartImg, thunderImg, doubleImg, powerImg, enemyImg1, enemyImg2, enemyImg3, enemyImg4, explosionImg;
+    private BufferedImage playerImg, starImg, bulletImg, blueBulletImg, randomImg, heartImg, thunderImg, doubleImg, powerImg, 
+    enemyImg1, enemyImg2, enemyImg3, enemyImg4, explosionImg, enemyBulletImg;
     private Player player;
     private Item[] item = new Item[5];
     private Bullet[] basicBullet = new Bullet[2];
@@ -29,7 +30,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private Entity[] star = new Entity[30];
     private Enemy[] grunt = new Enemy[20];
     private Enemy[] elite = new Enemy[10];
-    private Enemy[] commander = new Enemy[5];
+    private Commander[] commander = new Commander[5];
     private Enemy boss;
     private Explosion[] exploList = new Explosion[50];
     private Thread thread;
@@ -69,7 +70,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     public void updateEnemy(Enemy[] enemyList){ // Xử lý các sự kiện của Enemy (di chuyển, va chạm với đạn, va chạm với người chơi và ra khỏi khung hình) 
         for(Enemy enemy : enemyList){
             if(enemy.getActive()){
-                enemy.setY(enemy.getY() + enemy.getVy());
+                enemy.move(timeCounter, player.getX(), player.getY());
                 
                 handleHit(basicBullet, enemy);
                 handleHit(doubleBullet, enemy);
@@ -78,11 +79,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 double distance = Math.sqrt(Math.pow(enemy.getX() - player.getX(), 2) + Math.pow(enemy.getY() - player.getY(), 2));
                 if(distance < 48){ // Nếu enemy đâm vào player -> thì thôi, cho enemy tái sinh đi, mình chỉ cần enemy chết khi bắn trúng để không xuất hiện quá nhiều enemy thôi!
                     player.setHealth(player.getHealth() - enemy.getPower());
-                    enemy.setActive(false);
-                }
-                
-                if(enemy.getY() > HEIGHT + 48){ 
-                    player.setHealth(player.getHealth() - enemy.getPower() / 2);
                     enemy.setActive(false);
                 }
             }
@@ -108,13 +104,14 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             // Hàm getSubimage() dùng để cắt một phần ảnh từ ảnh gốc. Tham số: hoành độ bắt đầu cắt, tung độ bắt đầu cắt, độ dài muốn cắt chiều ngang, độ dài muốn cắt chiều dọc
             enemyImg1 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/assaultspaceship.png"));
             enemyImg2 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/violetpoison.png"));
-            enemyImg3 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/goblin.png"));
+            enemyImg3 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/ancientknightgold.png"));
             randomImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/randomitem.png"));
             heartImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/heart.png"));
             thunderImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/thunder.png"));
             doubleImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/double.png"));
             powerImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/power.png"));
             explosionImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/explosion.png"));
+            enemyBulletImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/arrowbullet.png"));
         }
         catch(Exception e){ // biến e lưu thông tin của lỗi bắt được
             e.printStackTrace(); // In ra dấu vết của lỗi (vị trí lỗi,...)
@@ -149,7 +146,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             elite[i] = new Enemy(1, 48, 48, 40, 40, 20, 5, enemyImg2, false);
         }
         for(int i=0; i<5; i++){
-            commander[i] = new Enemy(1, 48, 48, 100, 100, 60, 20, enemyImg3, false);
+            commander[i] = new Commander(2, 1, 64, 64, 100, 100, 40, 20, enemyImg3, false, 3);
         }
         boss = new Enemy(1, 48, 48, 300, 300, 100, 100, enemyImg4, false);
         
@@ -217,6 +214,16 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         for(Explosion explosion : exploList){
             if(explosion.getActive()){
                 g.drawImage(explosionImg, explosion.getX(), explosion.getY(), explosion.getWidth(), explosion.getHeight(), null);
+            }
+        }
+        
+        for(Enemy enemy : commander){
+            if(enemy.getActive()){
+                for(Bullet bullet : enemy.getBullets()){
+                    if(bullet.getActive()){
+                        g.drawImage(enemyBulletImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
+                    }
+                }
             }
         }
         
@@ -383,6 +390,27 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                     elite[i].setActive(true);
                     break;
                 }
+            }
+        }
+        
+        if(timeCounter % 600 == 0){
+            for(int i=0; i<5; i++){
+                if(!commander[i].getActive()){
+                    /*commander[i].setX(random.nextInt(WIDTH - 48) + 0);
+                    commander[i].setY(-random.nextInt(48));*/
+                    commander[i].setX(0);
+                    commander[i].setY(0);
+                    commander[i].setDx(0);
+                    commander[i].setDy(0);
+                    commander[i].setHealth(commander[i].getMaxHealth());
+                    commander[i].setActive(true);
+                    break;
+                }
+            }
+        }
+        for(Enemy enemy : commander){
+            if(enemy.getActive()){
+                enemy.shoot(timeCounter, player);
             }
         }
         

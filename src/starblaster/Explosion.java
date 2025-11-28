@@ -4,7 +4,7 @@ public class Explosion extends Entity {
     private int displayTime;
     
     public Explosion(int width, int height, boolean isActive){
-        super(width, height);
+        super(width, height, isActive);
     }
     
     public int getDisplayTime(){

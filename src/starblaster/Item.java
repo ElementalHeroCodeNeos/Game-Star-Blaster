@@ -9,10 +9,11 @@ public class Item extends Entity {
     // isActive = true nghĩa là Item đang rơi
     
     public Item(int vy, int width, int height, State type, BufferedImage image, long effectDuration, long effectCounter, boolean isActive){
-        super(vy, width, height);
+        super(vy, width, height, isActive);
         this.type = type;
         this.image = image;
         this.effectDuration = effectDuration;
+        this.effectCounter = effectCounter;
     }
     
     public State getType(){
