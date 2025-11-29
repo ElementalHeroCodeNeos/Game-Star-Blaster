@@ -1,7 +1,8 @@
 package starblaster;
 
 public class Entity {
-    protected int x, y, vx, vy, width, height; // Các tham số: hoành độ, tung độ, tốc độ dịch trái, tốc độ dịch phải, chiều rộng, chiều cao của vật thể
+    protected double x, y, vx, vy;
+    protected int width, height; // Các tham số: hoành độ, tung độ, tốc độ dịch trái, tốc độ dịch phải, chiều rộng, chiều cao của vật thể
     // Các thuộc tính này sẽ dùng làm thông số để vẽ hình ảnh của vật thể lên frame (coi điểm góc trái phía trên của hình ảnh là điểm đại diện cho vật thể)
     // Gốc toạ độ của frame là điểm phía trên góc trái, chiều dương trục hoành từ trái sang phải, chiều dương trục tung từ trên xuống dưới
     private boolean isActive;
@@ -10,13 +11,13 @@ public class Entity {
         this.height = height;
     }
     
-    public Entity(int vy, int width, int height){
+    public Entity(double vy, int width, int height){
         this.vy = vy;
         this.width = width;
         this.height = height;
     }
     
-    public Entity(int x, int y, int vx, int vy, int width, int height){ 
+    public Entity(double x, double y, double vx, double vy, int width, int height){ 
         this.x = x;
         this.y = y;
         this.vx = vx;
@@ -31,14 +32,14 @@ public class Entity {
         this.isActive = isActive;
     }
     
-    public Entity(int vy, int width, int height, boolean isActive){
+    public Entity(double vy, int width, int height, boolean isActive){
         this.vy = vy;
         this.width = width;
         this.height = height;
         this.isActive = isActive;
     }
     
-    public Entity(int x, int y, int vx, int vy, int width, int height, boolean isActive){ 
+    public Entity(double x, double y, double vx, double vy, int width, int height, boolean isActive){ 
         this.x = x;
         this.y = y;
         this.vx = vx;
@@ -48,35 +49,35 @@ public class Entity {
         this.isActive = isActive;
     }
     
-    public int getX(){
+    public double getX(){
         return this.x;
     }
     
-    public void setX(int x){
+    public void setX(double x){
         this.x = x;
     }
     
-    public int getY(){
+    public double getY(){
         return this.y;
     }
     
-    public void setY(int y){
+    public void setY(double y){
         this.y = y;
     }
     
-    public int getVx(){
+    public double getVx(){
         return this.vx;
     }
     
-    public void setVx(int vx){
+    public void setVx(double vx){
         this.vx = vx;
     }
     
-    public int getVy(){
+    public double getVy(){
         return this.vy;
     }
     
-    public void setVy(int vy){
+    public void setVy(double vy){
         this.vy = vy;
     }
     

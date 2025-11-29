@@ -21,7 +21,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private boolean gameOver = false;
     private BufferedImage backgroundImg;
     private BufferedImage playerImg, starImg, bulletImg, blueBulletImg, randomImg, heartImg, thunderImg, doubleImg, powerImg, 
-    enemyImg1, enemyImg2, enemyImg3, enemyImg4, enemyImg5, enemyImg6, explosionImg, enemyBulletImg;
+    enemyImg1, enemyImg2, enemyImg3, enemyImg4, enemyImg5, enemyImg6, enemyImg7, explosionImg, arrowImg, fireBulletImg, thunderBulletImg;
     private Player player;
     private Item[] item = new Item[5];
     private Bullet[] basicBullet = new Bullet[2];
@@ -32,7 +32,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     private Enemy[] elite = new Enemy[10];
     private Commander[] commander = new Commander[5];
     private Vanguard[] vanguard = new Vanguard[2];
-    private Enemy boss;
+    private Boss[] boss = new Boss[1];
     private Explosion[] exploList = new Explosion[50];
     private Thread thread;
     private long timeCounter = 0; // Bộ đếm thời gian (tính bằng ticks)
@@ -55,30 +55,30 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     public void drawEnemyList(Graphics g, Enemy[] enemyList){ // Vẽ danh sách các enemy cùng loại
         for(Enemy enemy : enemyList){
             if(enemy.getActive()){
-                g.drawImage(enemy.getImage(), enemy.getX(), enemy.getY(), enemy.getWidth(), enemy.getHeight(), null);
+                g.drawImage(enemy.getImage(), (int)enemy.getX(), (int)enemy.getY(), enemy.getWidth(), enemy.getHeight(), null);
             }
         }
     }
     
-    public void handleHit(Bullet[] bulletList, Enemy enemy){ // Xử lý sự kiện va chạm của 1 loại bullet với 1 enemy
+    public void handleHit(Bullet[] bulletList, Enemy enemy, double radius){ // Xử lý sự kiện va chạm của 1 loại bullet với 1 enemy
         for(Bullet bullet : bulletList){
             if(bullet.getActive()){
-                bullet.onHit(enemy, player, exploList);
+                bullet.onHit(enemy, player, exploList, radius);
             }
         }
     }
     
-    public void updateEnemy(Enemy[] enemyList){ // Xử lý các sự kiện của Enemy (di chuyển, va chạm với đạn, va chạm với người chơi và ra khỏi khung hình) 
+    public void updateEnemy(Enemy[] enemyList, double radius){ // Xử lý các sự kiện của Enemy (di chuyển, va chạm với đạn, va chạm với người chơi và ra khỏi khung hình) 
         for(Enemy enemy : enemyList){
             if(enemy.getActive()){
-                enemy.move(timeCounter, player.getX(), player.getY());
+                enemy.move(timeCounter, player.getX());
                 
-                handleHit(basicBullet, enemy);
-                handleHit(doubleBullet, enemy);
-                handleHit(powerBullet, enemy);
+                handleHit(basicBullet, enemy, radius);
+                handleHit(doubleBullet, enemy, radius);
+                handleHit(powerBullet, enemy, radius);
                 
                 double distance = Math.sqrt(Math.pow(enemy.getX() - player.getX(), 2) + Math.pow(enemy.getY() - player.getY(), 2));
-                if(distance < 48){
+                if(distance < radius){
                     player.setHealth(player.getHealth() - enemy.getPower());
                     enemy.setActive(false);
                 }
@@ -108,13 +108,17 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             enemyImg3 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/goblin.png"));
             enemyImg4 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/ancientknightgold.png"));
             enemyImg5 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/ancientknightmoss.png"));
+            enemyImg6 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/skull.png"));
+            enemyImg7 = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/hellspike.png"));
             randomImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/randomitem.png"));
             heartImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/heart.png"));
             thunderImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/thunder.png"));
             doubleImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/double.png"));
             powerImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/power.png"));
             explosionImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/explosion.png"));
-            enemyBulletImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/arrowbullet.png"));
+            arrowImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/arrowbullet.png"));
+            fireBulletImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/firebullet2.png"));
+            thunderBulletImg = ImageIO.read(getClass().getResourceAsStream("/starblaster/image/lightningball.png"));
         }
         catch(Exception e){ // biến e lưu thông tin của lỗi bắt được
             e.printStackTrace(); // In ra dấu vết của lỗi (vị trí lỗi,...)
@@ -123,13 +127,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         player = new Player(WIDTH/2 - 48/2, HEIGHT - 90, 0, 6, 48, 48, 100, 100, 0); // Ta để width và height bằng 48 dù trong ảnh gốc, mỗi vật thể chỉ là 16, 16 vì 16 thì nhỏ quá :)
         
         for(int i=0; i<2; i++){
-            basicBullet[i] = new Bullet(WIDTH, HEIGHT + 200, 0, 5, 48, 48, 20, false);
+            basicBullet[i] = new Bullet(6.5, 48, 48, 20, false);
         } // Ban đầu, khi chưa nhấn Space để bắn, bullet nằm tại điểm đạn (chứ mà ko thiết lập thì mặc định là (0, 0) thì có thể bị gần toạ độ enemy mới tạo -> playerScore tăng dù ko bắn
         for(int i=0; i<4; i++){
-            doubleBullet[i] = new Bullet(WIDTH, HEIGHT + 200, 0, 5, 48, 48, 20, false);
+            doubleBullet[i] = new Bullet(6.5, 48, 48, 20, false);
         }
         for(int i=0; i<3; i++){
-            powerBullet[i] = new Bullet(WIDTH, HEIGHT + 200, 0, 8, 48, 48, 40, false);
+            powerBullet[i] = new Bullet(8, 48, 48, 40, false);
         }
         
         item[0] = new Item(2, 48, 48, State.RANDOM, randomImg, 1200, -1, false);
@@ -146,16 +150,16 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             grunt[i] = new Enemy(1, 48, 48, 20, 20, 10, 1, enemyImg1, false); // Loại enemy này có maxHealth = 20  
         }
         for(int i=0; i<10; i++){
-            elite[i] = new Enemy(1, 48, 48, 40, 40, 15, 5, enemyImg2, false);
+            elite[i] = new Enemy(1, 48, 48, 40, 30, 15, 5, enemyImg2, false);
         }
         for(int i=0; i<5; i++){
-            commander[i] = new Commander(2, 1, 48, 48, 100, 100, 40, 20, enemyImg3, false, 3, 10);
+            commander[i] = new Commander(2, 1, 48, 48, 100, 100, 20, 20, enemyImg3, false, 3, 10);
         }
         
-        vanguard[0] = new Vanguard(3, 1, 64, 64, 1500, 1500, 100, 200, enemyImg4, false, 5, 15);
-        vanguard[1] = new Vanguard(-3, 1, 64, 64, 1500, 1500, 100, 200, enemyImg5, false, 5, 15);
+        vanguard[0] = new Vanguard(2, 2, 64, 64, 1000, 1000, 100, 200, enemyImg4, false, 5, 15, 0);
+        vanguard[1] = new Vanguard(-2, 2, 64, 64, 1000, 1000, 100, 200, enemyImg5, false, 5, 15, 1);
        
-        boss = new Enemy(1, 48, 48, 300, 300, 100, 100, enemyImg4, false);
+        boss[0] = new Boss(3, 3, 192, 192, 3000, 3000, 100, 1000, enemyImg6, false, 6, 20, 64, 64, fireBulletImg, thunderBulletImg);
         
         for(int i=0; i<50; i++){
             exploList[i] = new Explosion(64, 64, false);
@@ -173,27 +177,27 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
     public void paintComponent(Graphics g){ // Lớp Graphics giống như 1 cây cọ vẽ, dùng để vẽ các hình ảnh và vật thể lên các Container và được cấp phát tài nguyên hệ thống (GPU,...)
         super.paintComponent(g); // Vẽ nền (như kiểu phác thảo, phân bố cục của tranh). Sau đó ta bổ sung lệnh để vẽ chi tiết (kiểu các vật thể, hình ảnh và tô màu)
         g.drawImage(backgroundImg, 0, 0, 800, 600, null);
-        g.drawImage(playerImg, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
+        g.drawImage(playerImg, (int)player.getX(), (int)player.getY(), player.getWidth(), player.getHeight(), null);
         
         switch(bulletState){
             case State.BASIC:
                 for(int i=0; i<2; i++){
                     if(basicBullet[i].getActive()){
-                        g.drawImage(bulletImg, basicBullet[i].getX(), basicBullet[i].getY(), basicBullet[i].getWidth(), basicBullet[i].getHeight(), null);
+                        g.drawImage(bulletImg, (int)basicBullet[i].getX(), (int)basicBullet[i].getY(), basicBullet[i].getWidth(), basicBullet[i].getHeight(), null);
                     }
                 }
                 break;
             case State.DOUBLE:
                 for(int i=0; i<4; i++){
                     if(doubleBullet[i].getActive()){
-                        g.drawImage(bulletImg, doubleBullet[i].getX(), doubleBullet[i].getY(), doubleBullet[i].getWidth(), doubleBullet[i].getHeight(), null);
+                        g.drawImage(bulletImg, (int)doubleBullet[i].getX(), (int)doubleBullet[i].getY(), doubleBullet[i].getWidth(), doubleBullet[i].getHeight(), null);
                     }
                 }
                 break;
             case State.POWER:
                 for(int i=0; i<3; i++){
                     if(powerBullet[i].getActive()){
-                        g.drawImage(blueBulletImg, powerBullet[i].getX(), powerBullet[i].getY(), powerBullet[i].getWidth(), powerBullet[i].getHeight(), null);
+                        g.drawImage(blueBulletImg, (int)powerBullet[i].getX(), (int)powerBullet[i].getY(), powerBullet[i].getWidth(), powerBullet[i].getHeight(), null);
                     }
                 }
                 break;
@@ -201,54 +205,60 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         
         for(int i=0; i<5; i++){
             if(item[i].getActive()){
-                g.drawImage(item[i].getImage(), item[i].getX(), item[i].getY(), item[i].getWidth(), item[i].getHeight(), null);
+                g.drawImage(item[i].getImage(), (int)item[i].getX(), (int)item[i].getY(), item[i].getWidth(), item[i].getHeight(), null);
             }
         }
         
         for(int i=0; i<30; i++){
             if(star[i].getActive()){
-                g.drawImage(starImg, star[i].getX(), star[i].getY(), star[i].getWidth(), star[i].getHeight(), null);
+                g.drawImage(starImg, (int)star[i].getX(), (int)star[i].getY(), star[i].getWidth(), star[i].getHeight(), null);
             }
         }
-        
+        // Vẽ Enemy
         drawEnemyList(g, grunt);
         drawEnemyList(g, elite);
         drawEnemyList(g, commander);
         drawEnemyList(g, vanguard);
-        if(boss.getActive()){
-            g.drawImage(boss.getImage(), boss.getX(), boss.getY(), boss.getWidth(), boss.getHeight(), null);
+        if(boss[0].getActive()){
+            g.drawImage(boss[0].getImage(), (int)(boss[0].getX() - boss[0].getWidth()/2), (int)(boss[0].getY() - boss[0].getHeight()/2), boss[0].getWidth(), boss[0].getHeight(), null);
         }
         
         for(Explosion explosion : exploList){
             if(explosion.getActive()){
-                g.drawImage(explosionImg, explosion.getX(), explosion.getY(), explosion.getWidth(), explosion.getHeight(), null);
+                g.drawImage(explosionImg, (int)explosion.getX(), (int)explosion.getY(), explosion.getWidth(), explosion.getHeight(), null);
             }
         }
-        
+        // Vẽ đạn của Enemy
         for(Enemy enemy : commander){
             if(enemy.getActive()){
                 for(Bullet bullet : enemy.getBullets()){
                     if(bullet.getActive()){
-                        g.drawImage(enemyBulletImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
+                        g.drawImage(arrowImg, (int)bullet.getX(), (int)bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
                     }
                 }
             }
         }
-        
         for(Enemy enemy : vanguard){
             if(enemy.getActive()){
                 for(Bullet bullet : enemy.getBullets()){
                     if(bullet.getActive()){
-                        g.drawImage(enemyBulletImg, bullet.getX(), bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
+                        g.drawImage(arrowImg, (int)bullet.getX(), (int)bullet.getY(), bullet.getWidth(), bullet.getHeight(), null);
                     }
+                }
+            }
+        }
+        if(boss[0].getActive()){
+            for(Bullet bullet : boss[0].getBullets()){
+                if(bullet.getActive()){
+                    g.drawImage(bullet.getImage(), (int)(bullet.getX() - bullet.getWidth()/2), (int)(bullet.getY() - bullet.getHeight()/2), bullet.getWidth(), bullet.getHeight(), null);
                 }
             }
         }
         
         g.setColor(Color.WHITE);
-        g.setFont(new Font("Arial", Font.PLAIN, 30));
-        g.drawString("SCORE " + player.getScore(), 5, 40);
-        g.drawString("HEALTH " + player.getHealth(), 5, 85);
+        g.setFont(new Font("Arial", Font.PLAIN, 20));
+        g.drawString("SCORE " + player.getScore(), 5, 25);
+        g.drawString("HEALTH " + player.getHealth(), 5, 50);
         if(gameOver){
             g.setColor(Color.RED);
             g.setFont(new Font("Arial", Font.BOLD, 50));
@@ -259,6 +269,24 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
             g.setFont(new Font("Arial", Font.BOLD, 50));
             g.drawString("PAUSE", WIDTH/2 - 100, HEIGHT/2);
         }
+        if(vanguard[0].getActive()){
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.PLAIN, 20));
+            g.drawString("GOLD " + vanguard[0].getHealth(), 5, 100);
+        }
+        if(vanguard[1].getActive()){
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.PLAIN, 20));
+            g.drawString("MOSS " + vanguard[1].getHealth(), 5, 125);
+        }
+        if(boss[0].getActive()){
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.PLAIN, 20));
+            g.drawString("BOSS " + boss[0].getHealth(), 5, 100);
+        }
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.PLAIN, 20));
+        g.drawString("TimeCounter " + timeCounter, 5, 75);
         g.dispose(); // giải phóng tài nguyên mà đối tượng Graphics đang sử dụng 
     }
     
@@ -410,28 +438,37 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 }
             }
         }
-        /*if(timeCounter % 600 == 0){
+        if(timeCounter % 600 == 0){
             for(int i=0; i<5; i++){
                 if(!commander[i].getActive()){
-                    //commander[i].setX(random.nextInt(WIDTH - 48) + 0);
-                    //commander[i].setY(-random.nextInt(48));
                     commander[i].setX(0);
                     commander[i].setY(0);
                     commander[i].setDx(0);
                     commander[i].setDy(0);
                     commander[i].setHealth(commander[i].getMaxHealth());
+                    commander[i].setType(random.nextInt(2) + 0);
+                    if(commander[i].getType() == 0) commander[i].setImage(enemyImg3);
+                    else{
+                        commander[i].setY(48);
+                        commander[i].setImage(enemyImg7);        
+                    }
                     commander[i].setActive(true);
                     break;
                 }
             }
-        }*/
-        if(timeCounter == 600){
+        }
+        if(timeCounter == 6000){
             for(int i=0; i<2; i++){
                 vanguard[i].setY(0);
                 if(i == 0) vanguard[i].setX(0);
                 else vanguard[i].setX(WIDTH - vanguard[i].getWidth());
                 vanguard[i].setActive(true);
             }
+        }
+        if(timeCounter == 12000){
+            boss[0].setX(WIDTH/2);
+            boss[0].setY(-boss[0].getHeight()/2);
+            boss[0].setActive(true);
         }
         
         for(Enemy enemy : commander){
@@ -441,15 +478,16 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
         }
         for(Enemy enemy : vanguard){
             if(enemy.getActive()){
-                enemy.shoot(timeCounter, player, 60);
+                enemy.shoot(timeCounter, player, 80);
             }
         }
+        if(boss[0].getActive()) boss[0].shoot(timeCounter, player, 60);
         
-        updateEnemy(grunt); 
-        updateEnemy(elite);
-        updateEnemy(commander);
-        updateEnemy(vanguard);
-        // updateEnemy(boss);
+        updateEnemy(grunt, 48); 
+        updateEnemy(elite, 48);
+        updateEnemy(commander, 48);
+        updateEnemy(vanguard, 48);
+        updateEnemy(boss, 128);
         
         for(Explosion explosion : exploList){ // Xử lý thời gian hiển thị vụ nổ (Explosion)
             if(explosion.getActive()){
@@ -544,6 +582,15 @@ public class GamePanel extends JPanel implements Runnable, KeyListener {
                 if(gameState == State.PLAY){
                     gameState = State.PAUSE;
                     bgMusic.stop();
+                }
+                break;
+            case KeyEvent.VK_V:
+                timeCounter = 5700;
+                break;
+            case KeyEvent.VK_B:   
+                timeCounter = 11700;
+                for(int i=0; i<2; i++){
+                    vanguard[i].setActive(false);
                 }
                 break;
         }

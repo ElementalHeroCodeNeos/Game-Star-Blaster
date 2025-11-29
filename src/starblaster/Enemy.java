@@ -3,18 +3,19 @@ package starblaster;
 import java.awt.image.BufferedImage;
 
 public class Enemy extends Entity {
-    private int health, maxHealth, power, point;
+    protected int health, maxHealth, power, point;
     private BufferedImage image;
     protected double dx, dy;
     protected Bullet[] bullets;
     protected int maxBullets;
     protected int powerBullet;
     protected int direction = 1; // direction = -1: đã đổi sang hướng ngược lại (thường là khi va vào cạnh đứng)
+    protected int type = 0;
     
     protected static final int WIDTH = 800;
     protected static final int HEIGHT = 600;
     
-    public Enemy(int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive){
+    public Enemy(double vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive){
         super(vy, width, height, isActive);
         this.health = health;
         this.maxHealth = maxHealth;
@@ -23,7 +24,7 @@ public class Enemy extends Entity {
         this.image = image;
     }
     
-    public Enemy(int x, int y, int vx, int vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive){
+    public Enemy(double x, double y, double vx, double vy, int width, int height, int health, int maxHealth, int power, int point, BufferedImage image, boolean isActive){
         super(x, y, vx, vy, width, height, isActive);
         this.health = health;
         this.maxHealth = maxHealth;
@@ -60,6 +61,10 @@ public class Enemy extends Entity {
         return this.image;
     }
 
+    public void setImage(BufferedImage image) {
+        this.image = image;
+    }
+
     public void setDx(double dx) {
         this.dx = dx;
     }
@@ -72,7 +77,15 @@ public class Enemy extends Entity {
         return bullets;
     }
 
-    public void move(long timeCounter, double playerX, double playerY){
+    public int getType() {
+        return type;
+    }
+
+    public void setType(int type) {
+        this.type = type;
+    }
+
+    public void move(long timeCounter, double playerX){
         this.y += vy;
         if(this.y > HEIGHT + this.height){
             this.setActive(false);
@@ -97,16 +110,28 @@ public class Enemy extends Entity {
         }
     }
     
-    public void sinMove(long timeCounter, double playerX, double playerY){
-        double freq = 0.02; // Tần số dao động -> tần số càng lớn, dao động càng nhanh (mạnh).
-        double amplitude = 2.5; // Biên độ dao động ngang (độ lệch tối đa so với vị trí cân bằng). 
-        this.x += (int)(Math.sin(timeCounter * freq) * amplitude);
+    public void sideMoveBoss(int frameWidth){
+        this.x += this.vx;
+        if(this.x < this.width/2){
+            this.x = this.width/2;
+            this.vx *= -1;
+        }
+        if(this.x > frameWidth - this.width/2){
+            this.x = frameWidth - this.width/2;
+            this.vx *= -1;
+        }
+    }
+    
+    public void sinMove(long timeCounter){
+        double freq = 0.015; // Tần số dao động -> tần số càng lớn, dao động càng nhanh (mạnh).
+        double amplitude = 3.5; // Biên độ dao động ngang (độ lệch tối đa so với vị trí cân bằng). 
+        this.x += Math.sin(timeCounter * freq) * amplitude;
         if(this.x < 0) this.x = 0;
         if(this.x > WIDTH - this.width) this.x = WIDTH - this.width;
         this.y += this.vy;
     }
     
-    public void parabolMove(long timeCounter, double playerX, double playerY){
+    public void parabolMove(){
         double a = 0.00035; 
         this.x += this.vx; // Ban đầu, dx = dy = 0 nên parabol có đỉnh O(0,0)
         if(this.x < 0){
@@ -125,10 +150,12 @@ public class Enemy extends Entity {
         if(this.y < 0) this.y = 0;
     }
     
-    public void chasingMove(long timeCounter, double playerX, double playerY){
-        if(this.x < playerX) this.x += this.vx;
-        else if(this.x > playerX) this.x -= this.vx;
-        this.y += this.vy;
+    public void chasingMove(double playerX){
+        double distanceX = Math.abs(this.x - playerX);
+        if(distanceX > 5){
+            if(this.x < playerX) this.x += this.vx;
+            else if(this.x > playerX) this.x -= this.vx;
+        }
     }
     
     public void shoot(long timeCounter, Player player, int frequent){

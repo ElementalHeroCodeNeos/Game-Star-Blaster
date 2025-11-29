@@ -1,27 +1,46 @@
 package starblaster;
 
+import java.awt.image.BufferedImage;
+
 public class Bullet extends Entity{
     private int damage;
+    private BufferedImage image;
+    private BulletMovement movement;
     public static final int WIDTH = 800;
     public static final int HEIGHT = 600;
     
-    public Bullet(int vy, int width, int height, int damage, boolean isActive){
+    public Bullet(double vy, int width, int height, int damage, boolean isActive){
         super(vy, width, height, isActive);
         this.damage = damage;
     }
     
-    public Bullet(int x, int y, int vx, int vy, int width, int height, int damage, boolean isActive){
-        super(x, y, vx, vy, width, height, isActive);
+    public Bullet(double vx, double vy, int width, int height, int damage, BufferedImage image, boolean isActive){
+        super(vy, width, height, isActive);
+        this.vx = vx;
         this.damage = damage;
+        this.image = image;
     }
 
     public int getDamage() {
         return damage;
     }
+
+    public BufferedImage getImage() {
+        return image;
+    }
     
-    public void onHit(Enemy enemy, Player player, Explosion[] exploList){
+    public void setImage(BufferedImage image) {
+        this.image = image;
+    }
+    
+
+    public void setMovement(BulletMovement movement) {
+        this.movement = movement;
+    }
+    
+    public void onHit(Enemy enemy, Player player, Explosion[] exploList, double radius){
         double distance = Math.sqrt(Math.pow(enemy.getX() - this.x, 2) + Math.pow(enemy.getY() - this.y, 2));
-        if(distance < 48){ 
+        if(distance < radius){ 
             enemy.setHealth(enemy.getHealth() - this.damage);
             if(enemy.getHealth() <= 0){ 
                 player.setScore(player.getScore() + enemy.getPoint()); 
@@ -41,4 +60,8 @@ public class Bullet extends Entity{
             this.setActive(false);
         }
     }  
+    
+    public void move(long timeCounter, double playerX){
+        movement.move(this, timeCounter, playerX);
+    }
 }

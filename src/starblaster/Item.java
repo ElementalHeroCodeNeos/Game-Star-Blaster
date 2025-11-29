@@ -8,7 +8,7 @@ public class Item extends Entity {
     private BufferedImage image;
     // isActive = true nghĩa là Item đang rơi
     
-    public Item(int vy, int width, int height, State type, BufferedImage image, long effectDuration, long effectCounter, boolean isActive){
+    public Item(double vy, int width, int height, State type, BufferedImage image, long effectDuration, long effectCounter, boolean isActive){
         super(vy, width, height, isActive);
         this.type = type;
         this.image = image;
